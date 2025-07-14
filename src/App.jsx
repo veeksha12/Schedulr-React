@@ -1,45 +1,73 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
-import './App.css';
+import React, { useState } from 'react'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import LoginForm from './components/Auth/LoginForm'
+import RegisterForm from './components/Auth/RegisterForm'
+import Layout from './components/Layout'
+import Dashboard from './components/Dashboard/Dashboard'
+import PlannersManager from './components/Planners/PlannersManager'
+import EnhancedTodoList from './components/TodoList/EnhancedTodoList'
+import StudySchedule from './components/Schedule/StudySchedule'
+import GradeTracker from './components/Grades/GradeTracker'
+import AIAssistant from './components/Chat/AIAssistant'
 
-import TodoList from './components/TodoList'; // ✅ import TodoList component
-
-function App() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank" rel="noreferrer">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-
-      <hr style={{ margin: '2rem 0' }} />
-
-      {/* ✅ TodoList section starts here */}
-      <div style={{ padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h2>Your Schedulr To-do List</h2>
-        <TodoList />
-      </div>
-    </>
-  );
+const AuthWrapper = () => {
+  const [isLogin, setIsLogin] = useState(true)
+  
+  return isLogin ? (
+    <LoginForm onToggleMode={() => setIsLogin(false)} />
+  ) : (
+    <RegisterForm onToggleMode={() => setIsLogin(true)} />
+  )
 }
 
-export default App;
+const MainApp = () => {
+  const { user, loading } = useAuth()
+  const [activeTab, setActiveTab] = useState('dashboard')
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <AuthWrapper />
+  }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard />
+      case 'planners':
+        return <PlannersManager />
+      case 'todo':
+        return <EnhancedTodoList />
+      case 'schedule':
+        return <StudySchedule />
+      case 'grades':
+        return <GradeTracker />
+      case 'chat':
+        return <AIAssistant />
+      default:
+        return <Dashboard />
+    }
+  }
+
+  return (
+    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+      {renderContent()}
+    </Layout>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  )
+}
+
+export default App
