@@ -15,6 +15,17 @@ import { format, isToday, addDays } from 'date-fns'
 
 const Dashboard = () => {
   const { user } = useAuth()
+  
+  // Demo user for when Supabase is not connected
+  const demoUser = {
+    id: 'demo-user',
+    email: 'demo@schedulr.app',
+    user_metadata: {
+      username: 'Demo User'
+    }
+  }
+  
+  const currentUser = user || (!supabase ? demoUser : null)
   const [stats, setStats] = useState({
     totalPlanners: 0,
     todayTasks: 0,
@@ -27,18 +38,37 @@ const Dashboard = () => {
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([])
 
   useEffect(() => {
-    if (user) {
+    if (currentUser && supabase) {
       fetchDashboardData()
+    } else if (currentUser && !supabase) {
+      // Set demo data
+      setStats({
+        totalPlanners: 2,
+        todayTasks: 5,
+        completedTasks: 3,
+        upcomingExams: 2,
+        averageGrade: 85,
+        studyStreak: 7
+      })
+      setRecentActivity([
+        { id: 1, title: 'Complete Math Assignment', completed: true, updated_at: new Date().toISOString() },
+        { id: 2, title: 'Review Physics Notes', completed: false, updated_at: new Date().toISOString() }
+      ])
+      setUpcomingDeadlines([
+        { id: 1, name: 'Calculus Midterm', date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() }
+      ])
     }
-  }, [user])
+  }, [currentUser])
 
   const fetchDashboardData = async () => {
+    if (!supabase) return
+    
     try {
       // Fetch planners count
       const { data: planners } = await supabase
         .from('planners')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
 
       // Fetch today's tasks
       const today = format(new Date(), 'yyyy-MM-dd')
@@ -102,7 +132,7 @@ const Dashboard = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {user?.user_metadata?.username || 'Student'}!
+          Welcome back, {currentUser?.user_metadata?.username || 'Student'}!
         </h1>
         <p className="text-gray-600 mt-2">
           Here's your study progress overview for {format(new Date(), 'EEEE, MMMM d, yyyy')}

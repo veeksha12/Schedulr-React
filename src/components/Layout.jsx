@@ -1,5 +1,6 @@
 import React from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 import { 
   Calendar, 
   CheckSquare, 
@@ -13,8 +14,24 @@ import {
 
 const Layout = ({ children, activeTab, setActiveTab }) => {
   const { user, signOut } = useAuth()
+  
+  // Demo user for when Supabase is not connected
+  const demoUser = {
+    id: 'demo-user',
+    email: 'demo@schedulr.app',
+    user_metadata: {
+      username: 'Demo User'
+    }
+  }
+  
+  const currentUser = user || (!supabase ? demoUser : null)
 
   const handleSignOut = async () => {
+    if (!supabase) {
+      // In demo mode, just refresh the page
+      window.location.reload()
+      return
+    }
     await signOut()
   }
 
@@ -32,6 +49,11 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b">
+          {!supabase && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded-lg mb-4">
+              <p className="text-xs font-medium">Demo Mode - Connect Supabase for full functionality</p>
+            </div>
+          )}
           <h1 className="text-2xl font-bold text-indigo-600">Schedulr</h1>
           <p className="text-sm text-gray-600 mt-1">Study Planner</p>
         </div>
@@ -61,9 +83,9 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
             <User className="w-8 h-8 text-gray-400" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-700">
-                {user?.user_metadata?.username || user?.email}
+                {currentUser?.user_metadata?.username || currentUser?.email}
               </p>
-              <p className="text-xs text-gray-500">{user?.email}</p>
+              <p className="text-xs text-gray-500">{currentUser?.email}</p>
             </div>
           </div>
           <button
@@ -71,7 +93,7 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
             className="flex items-center text-gray-600 hover:text-red-600 transition-colors"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
+            {supabase ? 'Sign Out' : 'Restart Demo'}
           </button>
         </div>
       </div>

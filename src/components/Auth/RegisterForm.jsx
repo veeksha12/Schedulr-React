@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 
 const RegisterForm = ({ onToggleMode }) => {
@@ -39,6 +40,13 @@ const RegisterForm = ({ onToggleMode }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
       <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        {!supabase && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-6">
+            <p className="font-medium">Demo Mode</p>
+            <p className="text-sm">Connect to Supabase to enable authentication</p>
+          </div>
+        )}
+        
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Join Schedulr</h1>
           <p className="text-gray-600">Create your study planner account</p>

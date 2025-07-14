@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { supabase } from './lib/supabase'
 import LoginForm from './components/Auth/LoginForm'
 import RegisterForm from './components/Auth/RegisterForm'
 import Layout from './components/Layout'
@@ -9,6 +10,15 @@ import EnhancedTodoList from './components/TodoList/EnhancedTodoList'
 import StudySchedule from './components/Schedule/StudySchedule'
 import GradeTracker from './components/Grades/GradeTracker'
 import AIAssistant from './components/Chat/AIAssistant'
+
+// Demo user for when Supabase is not connected
+const demoUser = {
+  id: 'demo-user',
+  email: 'demo@schedulr.app',
+  user_metadata: {
+    username: 'Demo User'
+  }
+}
 
 const AuthWrapper = () => {
   const [isLogin, setIsLogin] = useState(true)
@@ -23,6 +33,9 @@ const AuthWrapper = () => {
 const MainApp = () => {
   const { user, loading } = useAuth()
   const [activeTab, setActiveTab] = useState('dashboard')
+  
+  // Use demo user if Supabase is not connected
+  const currentUser = user || (!supabase ? demoUser : null)
 
   if (loading) {
     return (
@@ -32,7 +45,7 @@ const MainApp = () => {
     )
   }
 
-  if (!user) {
+  if (!currentUser) {
     return <AuthWrapper />
   }
 
