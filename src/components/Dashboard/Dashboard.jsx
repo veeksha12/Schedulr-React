@@ -112,20 +112,31 @@ const Dashboard = () => {
     }
   }
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color = 'indigo' }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center">
-        <div className={`p-3 rounded-lg bg-${color}-100`}>
-          <Icon className={`w-6 h-6 text-${color}-600`} />
-        </div>
-        <div className="ml-4">
-          <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
+  const colorStyles = {
+    indigo: { bg: 'bg-blue-100', text: 'text-blue-600' },
+    green: { bg: 'bg-green-100', text: 'text-green-600' },
+    orange: { bg: 'bg-yellow-100', text: 'text-yellow-600' },
+    purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
+  }
+
+  const StatCard = ({ icon: Icon, title, value, subtitle, color = 'indigo' }) => {
+    const styles = colorStyles[color] || colorStyles.indigo
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center">
+          <div className={`p-3 rounded-lg ${styles.bg}`}>
+            <Icon className={`w-6 h-6 ${styles.text}`} />
+          </div>
+          <div className="ml-4">
+            <h3 className="text-sm font-medium text-gray-500">{title}</h3>
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="space-y-8">
