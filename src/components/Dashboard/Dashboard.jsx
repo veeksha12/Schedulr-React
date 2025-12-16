@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { format, isToday, addDays } from 'date-fns'
 
-const Dashboard = () => {
+const Dashboard = ({ setActiveTab }) => {
   const { user } = useAuth()
   
   // Demo user for when Supabase is not connected
@@ -243,15 +243,24 @@ const Dashboard = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
             <div className="space-y-3">
-              <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
+              <button 
+                onClick={() => setActiveTab('planners')}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+              >
                 <BookOpen className="w-5 h-5 text-indigo-600" />
                 <span className="font-medium text-gray-900">Create New Planner</span>
               </button>
-              <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
+              <button 
+                onClick={() => setActiveTab('todo')}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+              >
                 <CheckSquare className="w-5 h-5 text-green-600" />
                 <span className="font-medium text-gray-900">Add Task</span>
               </button>
-              <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
+              <button 
+                onClick={() => setActiveTab('grades')}
+                className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
+              >
                 <Award className="w-5 h-5 text-purple-600" />
                 <span className="font-medium text-gray-900">Log Grade</span>
               </button>

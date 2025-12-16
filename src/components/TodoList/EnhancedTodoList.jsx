@@ -50,6 +50,7 @@ const EnhancedTodoList = () => {
         .order('created_at', { ascending: false })
 
       if (error) throw error
+      console.log('Fetched tasks:', data) // Debug log
       setTasks(data || [])
     } catch (error) {
       console.error('Error fetching tasks:', error)
@@ -120,6 +121,7 @@ const EnhancedTodoList = () => {
       )
     }
 
+    console.log('Filtered tasks:', filtered) // Debug log
     setFilteredTasks(filtered)
   }
 
@@ -127,7 +129,7 @@ const EnhancedTodoList = () => {
     const [formData, setFormData] = useState({
       title: task?.title || '',
       description: task?.description || '',
-      due_date: task?.due_date || '',
+      due_date: task?.due_date || null, // FIXED: null instead of empty string
       priority: task?.priority || 'medium',
       category: task?.category || 'study'
     })
@@ -136,26 +138,33 @@ const EnhancedTodoList = () => {
       e.preventDefault()
       
       try {
+        // Prepare data for submission - convert empty string to null
+        const submitData = {
+          ...formData,
+          due_date: formData.due_date || null // FIXED: ensure null if empty
+        }
+
         if (task) {
           const { error } = await supabase
             .from('tasks')
-            .update(formData)
+            .update(submitData)
             .eq('id', task.id)
           
           if (error) throw error
         } else {
           const { error } = await supabase
             .from('tasks')
-            .insert([{ ...formData, user_id: user.id }])
+            .insert([{ ...submitData, user_id: user.id, completed: false }])
           
           if (error) throw error
         }
         
         onSave()
         onClose()
-        fetchTasks()
+        await fetchTasks() // Refresh the task list
       } catch (error) {
         console.error('Error saving task:', error)
+        alert('Error saving task: ' + error.message)
       }
     }
 
@@ -201,8 +210,8 @@ const EnhancedTodoList = () => {
                 </label>
                 <input
                   type="date"
-                  value={formData.due_date}
-                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                  value={formData.due_date || ''}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value || null })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
@@ -276,12 +285,11 @@ const EnhancedTodoList = () => {
         .insert([{
           user_id: user.id,
           task_id: taskId,
-          action: completed ? 'uncompleted' : 'completed',
-          timestamp: new Date().toISOString()
+          action: completed ? 'uncompleted' : 'completed'
         }])
 
-      fetchTasks()
-      fetchTaskHistory()
+      await fetchTasks()
+      await fetchTaskHistory()
     } catch (error) {
       console.error('Error toggling task:', error)
     }
@@ -296,7 +304,7 @@ const EnhancedTodoList = () => {
           .eq('id', taskId)
 
         if (error) throw error
-        fetchTasks()
+        await fetchTasks()
       } catch (error) {
         console.error('Error deleting task:', error)
       }
@@ -420,7 +428,7 @@ const EnhancedTodoList = () => {
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">Task {entry.action}</p>
                     <p className="text-sm text-gray-500">
-                      {format(new Date(entry.timestamp), 'MMM d, yyyy h:mm a')}
+                      {format(new Date(entry.timestamp || entry.created_at), 'MMM d, yyyy h:mm a')}
                     </p>
                   </div>
                 </div>

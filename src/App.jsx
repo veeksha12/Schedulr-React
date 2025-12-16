@@ -52,7 +52,7 @@ const MainApp = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />
+        return <Dashboard setActiveTab={setActiveTab} />
       case 'planners':
         return <PlannersManager />
       case 'todo':
@@ -64,7 +64,7 @@ const MainApp = () => {
       case 'chat':
         return <AIAssistant />
       default:
-        return <Dashboard />
+        return <Dashboard setActiveTab={setActiveTab} />
     }
   }
 
