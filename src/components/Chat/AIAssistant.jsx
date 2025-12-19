@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Lightbulb, BookOpen, Target, Clock } from 'lucide-react'
+import { Send, Bot, User, Lightbulb, BookOpen, Target, Clock, Trash2, X } from 'lucide-react'
 import { format } from 'date-fns'
+
+// Gemini API Configuration - Use environment variable for better security
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
+if (!GEMINI_API_KEY) {
+  console.warn("Gemini API key not configured");
+}
+const GEMINI_API_URL =
+  'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
 
 const AIAssistant = () => {
   const { user } = useAuth()
@@ -14,13 +22,6 @@ const AIAssistant = () => {
   useEffect(() => {
     if (user) {
       fetchChatHistory()
-      // Add welcome message
-      setMessages([{
-        id: 'welcome',
-        type: 'ai',
-        content: `Hello ${user?.user_metadata?.username || 'there'}! I'm your AI study assistant. I can help you with study tips, time management, goal setting, and academic planning. What would you like to know?`,
-        timestamp: new Date().toISOString()
-      }])
     }
   }, [user])
 
@@ -42,6 +43,7 @@ const AIAssistant = () => {
         .limit(50)
 
       if (error) throw error
+      
       if (data && data.length > 0) {
         setMessages(data.map(msg => ({
           id: msg.id,
@@ -49,55 +51,63 @@ const AIAssistant = () => {
           content: msg.content,
           timestamp: msg.created_at
         })))
+      } else {
+        // Add welcome message if no history
+        const welcomeMsg = {
+          id: 'welcome',
+          type: 'ai',
+          content: `Hello ${user?.user_metadata?.username || 'there'}! I'm your AI study assistant powered by Gemini. I can help you with study tips, time management, goal setting, and academic planning. What would you like to know?`,
+          timestamp: new Date().toISOString()
+        }
+        setMessages([welcomeMsg])
       }
     } catch (error) {
       console.error('Error fetching chat history:', error)
     }
   }
 
-  const generateAIResponse = async (userMessage) => {
-    // This is a mock AI response generator
-    // In a real implementation, you would call an AI service like OpenAI
-    
-    const responses = {
-      study: [
-        "Here are some effective study techniques:\n\n1. **Pomodoro Technique**: Study for 25 minutes, then take a 5-minute break\n2. **Active Recall**: Test yourself instead of just re-reading\n3. **Spaced Repetition**: Review material at increasing intervals\n4. **Feynman Technique**: Explain concepts in simple terms\n\nWhich technique would you like to know more about?",
-        "For better study sessions, try these tips:\n\n• Find a quiet, dedicated study space\n• Remove distractions (phone, social media)\n• Use the 2-minute rule: if it takes less than 2 minutes, do it now\n• Break large tasks into smaller, manageable chunks\n• Reward yourself after completing study goals"
-      ],
-      time: [
-        "Time management is crucial for academic success! Here are my recommendations:\n\n1. **Time Blocking**: Assign specific time slots for different subjects\n2. **Priority Matrix**: Focus on urgent AND important tasks first\n3. **Buffer Time**: Add 25% extra time to your estimates\n4. **Weekly Reviews**: Assess what worked and what didn't\n\nWhat specific time management challenge are you facing?",
-        "Here's a simple time management framework:\n\n**Morning**: Plan your day and tackle hardest tasks\n**Afternoon**: Collaborative work and meetings\n**Evening**: Review, light reading, and preparation for tomorrow\n\nRemember: It's not about being busy, it's about being productive!"
-      ],
-      goal: [
-        "Setting SMART goals is key to academic success:\n\n**S**pecific: Clear and well-defined\n**M**easurable: Track your progress\n**A**chievable: Realistic given your resources\n**R**elevant: Aligned with your objectives\n**T**ime-bound: Has a deadline\n\nExample: 'I will improve my Math grade from B to A by studying 1 hour daily for the next 6 weeks.'\n\nWhat goal would you like to work on?",
-        "Goal achievement strategies:\n\n1. **Write it down**: Goals are 42% more likely to be achieved when written\n2. **Break it down**: Divide big goals into smaller milestones\n3. **Track progress**: Regular check-ins keep you motivated\n4. **Celebrate wins**: Acknowledge progress, no matter how small\n5. **Adjust as needed**: Be flexible and adapt your approach"
-      ],
-      motivation: [
-        "Staying motivated can be challenging! Here are some strategies:\n\n🎯 **Connect to your 'why'**: Remember your long-term goals\n🏆 **Celebrate small wins**: Acknowledge daily progress\n👥 **Study with others**: Accountability partners help\n📈 **Track progress**: Visual progress is motivating\n🎁 **Reward yourself**: Set up a reward system\n\nWhat's your biggest motivation challenge right now?",
-        "When motivation is low, try these quick fixes:\n\n• Start with just 5 minutes (often you'll continue)\n• Change your environment\n• Listen to motivational music or podcasts\n• Review your past successes\n• Remember that discipline beats motivation\n\nMotivation gets you started, but habits keep you going!"
-      ],
-      exam: [
-        "Exam preparation strategy:\n\n**4 weeks before**: Create study schedule, gather materials\n**3 weeks before**: Active learning, practice problems\n**2 weeks before**: Review, identify weak areas\n**1 week before**: Final review, practice tests\n**Day before**: Light review, rest well\n**Exam day**: Arrive early, stay calm, read instructions carefully\n\nWhat subject are you preparing for?",
-        "Exam anxiety management:\n\n🧘 **Before the exam**: Deep breathing, positive visualization\n📝 **During the exam**: Read all questions first, start with easy ones\n⏰ **Time management**: Allocate time per question, leave time for review\n🎯 **Stay focused**: If you blank out, move to another question\n✅ **Review**: Check your answers if time permits\n\nRemember: You've prepared for this!"
-      ]
+  const callGeminiAPI = async (userMessage) => {
+    try {
+      // Enhance the prompt with context about being a study assistant
+      const enhancedPrompt = `You are an AI study assistant helping students with their academic goals. 
+A student is asking: "${userMessage}"
+
+Please provide helpful, encouraging, and practical advice. Keep responses concise but informative. 
+If the question is about study techniques, time management, motivation, exam preparation, or academic planning, provide specific actionable tips.
+If the question is unrelated to studying, gently redirect them to academic topics while still being helpful.`
+
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: enhancedPrompt
+            }]
+          }]
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Gemini API Error:', errorData)
+        throw new Error('Failed to get response from Gemini API')
+      }
+
+      const data = await response.json()
+      
+      // Extract the text from Gemini's response
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        return data.candidates[0].content.parts[0].text
+      } else {
+        throw new Error('Unexpected response format from Gemini API')
+      }
+    } catch (error) {
+      console.error('Gemini API Error:', error)
+      return "I'm sorry, I'm having trouble connecting to my knowledge base right now. Please try again in a moment. In the meantime, remember: consistent study habits and breaking tasks into smaller chunks are key to academic success!"
     }
-
-    const message = userMessage.toLowerCase()
-    let response = "I'm here to help with your studies! You can ask me about:\n\n📚 Study techniques and methods\n⏰ Time management strategies\n🎯 Goal setting and achievement\n💪 Motivation and productivity\n📝 Exam preparation tips\n\nWhat would you like to know more about?"
-
-    if (message.includes('study') || message.includes('learn')) {
-      response = responses.study[Math.floor(Math.random() * responses.study.length)]
-    } else if (message.includes('time') || message.includes('schedule') || message.includes('manage')) {
-      response = responses.time[Math.floor(Math.random() * responses.time.length)]
-    } else if (message.includes('goal') || message.includes('target') || message.includes('achieve')) {
-      response = responses.goal[Math.floor(Math.random() * responses.goal.length)]
-    } else if (message.includes('motivat') || message.includes('inspire') || message.includes('encourage')) {
-      response = responses.motivation[Math.floor(Math.random() * responses.motivation.length)]
-    } else if (message.includes('exam') || message.includes('test') || message.includes('quiz')) {
-      response = responses.exam[Math.floor(Math.random() * responses.exam.length)]
-    }
-
-    return response
   }
 
   const sendMessage = async () => {
@@ -111,6 +121,7 @@ const AIAssistant = () => {
     }
 
     setMessages(prev => [...prev, userMessage])
+    const messageToSend = inputMessage
     setInputMessage('')
     setIsLoading(true)
 
@@ -121,11 +132,11 @@ const AIAssistant = () => {
         .insert([{
           user_id: user.id,
           type: 'user',
-          content: inputMessage
+          content: messageToSend
         }])
 
-      // Generate AI response
-      const aiResponse = await generateAIResponse(inputMessage)
+      // Get AI response from Gemini
+      const aiResponse = await callGeminiAPI(messageToSend)
       
       const aiMessage = {
         id: Date.now() + 1,
@@ -159,6 +170,55 @@ const AIAssistant = () => {
     }
   }
 
+  const deleteMessage = async (messageId) => {
+    if (messageId === 'welcome') {
+      // Remove welcome message from state only
+      setMessages(prev => prev.filter(msg => msg.id !== messageId))
+      return
+    }
+
+    if (!confirm('Delete this message?')) return
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('id', messageId)
+
+      if (error) throw error
+
+      setMessages(prev => prev.filter(msg => msg.id !== messageId))
+    } catch (error) {
+      console.error('Error deleting message:', error)
+      alert('Failed to delete message')
+    }
+  }
+
+  const clearAllChat = async () => {
+    if (!confirm('Are you sure you want to delete all chat history? This cannot be undone.')) return
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      // Reset to welcome message
+      const welcomeMsg = {
+        id: 'welcome',
+        type: 'ai',
+        content: `Hello ${user?.user_metadata?.username || 'there'}! I'm your AI study assistant powered by Gemini. I can help you with study tips, time management, goal setting, and academic planning. What would you like to know?`,
+        timestamp: new Date().toISOString()
+      }
+      setMessages([welcomeMsg])
+    } catch (error) {
+      console.error('Error clearing chat:', error)
+      alert('Failed to clear chat history')
+    }
+  }
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -177,14 +237,23 @@ const AIAssistant = () => {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <Bot className="w-6 h-6 text-indigo-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <Bot className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">AI Study Assistant</h1>
+              <p className="text-gray-600">Powered by Google Gemini</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">AI Study Assistant</h1>
-            <p className="text-gray-600">Get personalized study tips and academic guidance</p>
-          </div>
+          <button
+            onClick={clearAllChat}
+            className="flex items-center space-x-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Clear All</span>
+          </button>
         </div>
       </div>
 
@@ -200,7 +269,8 @@ const AIAssistant = () => {
                   setInputMessage(action.message)
                   setTimeout(() => sendMessage(), 100)
                 }}
-                className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm"
+                disabled={isLoading}
+                className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Icon className="w-4 h-4 text-indigo-600" />
                 <span>{action.text}</span>
@@ -229,16 +299,27 @@ const AIAssistant = () => {
                   <Bot className="w-5 h-5 text-gray-600" />
                 )}
               </div>
-              <div className={`rounded-lg p-4 ${
-                message.type === 'user'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white border border-gray-200'
-              }`}>
-                <div className="whitespace-pre-wrap">{message.content}</div>
-                <div className={`text-xs mt-2 ${
-                  message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'
+              <div className="flex-1">
+                <div className={`rounded-lg p-4 ${
+                  message.type === 'user'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-gray-200'
                 }`}>
-                  {format(new Date(message.timestamp), 'h:mm a')}
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className={`text-xs mt-2 flex items-center justify-between ${
+                    message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'
+                  }`}>
+                    <span>{format(new Date(message.timestamp), 'h:mm a')}</span>
+                    <button
+                      onClick={() => deleteMessage(message.id)}
+                      className={`ml-3 p-1 rounded hover:bg-opacity-20 transition-colors ${
+                        message.type === 'user' ? 'hover:bg-white' : 'hover:bg-gray-200'
+                      }`}
+                      title="Delete message"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -285,6 +366,9 @@ const AIAssistant = () => {
             <Send className="w-5 h-5" />
           </button>
         </div>
+        <p className="text-xs text-gray-500 mt-2">
+          💡 Tip: Press Enter to send, Shift+Enter for new line
+        </p>
       </div>
     </div>
   )
