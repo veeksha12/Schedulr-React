@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { Send, Bot, User, Lightbulb, BookOpen, Target, Clock, Trash2, X } from 'lucide-react'
+import { Send, Bot, User, Lightbulb, BookOpen, Target, Clock, Trash2, X, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
+import Notification from '../UI/Notification'
+import ConfirmModal from '../UI/ConfirmModal'
 
-// Gemini API Configuration - Use environment variable for better security
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
-if (!GEMINI_API_KEY) {
-  console.warn("Gemini API key not configured");
-}
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
 
@@ -17,6 +15,8 @@ const AIAssistant = () => {
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [notification, setNotification] = useState(null)
+  const [confirmModal, setConfirmModal] = useState(null)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -33,8 +33,23 @@ const AIAssistant = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const showNotification = (type, message) => {
+    setNotification({ type, message })
+  }
+
   const fetchChatHistory = async () => {
     try {
+      if (!supabase) {
+        const welcomeMsg = {
+          id: 'welcome',
+          type: 'ai',
+          content: `Hello! I'm your AI study assistant powered by Gemini. I can help you with study tips, time management, goal setting, and academic planning. What would you like to know?`,
+          timestamp: new Date().toISOString()
+        }
+        setMessages([welcomeMsg])
+        return
+      }
+
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -43,7 +58,7 @@ const AIAssistant = () => {
         .limit(50)
 
       if (error) throw error
-      
+
       if (data && data.length > 0) {
         setMessages(data.map(msg => ({
           id: msg.id,
@@ -52,7 +67,6 @@ const AIAssistant = () => {
           timestamp: msg.created_at
         })))
       } else {
-        // Add welcome message if no history
         const welcomeMsg = {
           id: 'welcome',
           type: 'ai',
@@ -63,16 +77,21 @@ const AIAssistant = () => {
       }
     } catch (error) {
       console.error('Error fetching chat history:', error)
+      showNotification('error', 'Failed to load chat history')
     }
   }
 
   const callGeminiAPI = async (userMessage) => {
+    if (!GEMINI_API_KEY) {
+      showNotification('error', 'Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file')
+      throw new Error('API key not configured')
+    }
+
     try {
-      // Enhance the prompt with context about being a study assistant
-      const enhancedPrompt = `You are an AI study assistant helping students with their academic goals. 
+      const enhancedPrompt = `You are an AI study assistant helping students with their academic goals.
 A student is asking: "${userMessage}"
 
-Please provide helpful, encouraging, and practical advice. Keep responses concise but informative. 
+Please provide helpful, encouraging, and practical advice. Keep responses concise but informative.
 If the question is about study techniques, time management, motivation, exam preparation, or academic planning, provide specific actionable tips.
 If the question is unrelated to studying, gently redirect them to academic topics while still being helpful.`
 
@@ -91,14 +110,22 @@ If the question is unrelated to studying, gently redirect them to academic topic
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         console.error('Gemini API Error:', errorData)
-        throw new Error('Failed to get response from Gemini API')
+
+        if (response.status === 400) {
+          throw new Error('Invalid API request. Please check your API key.')
+        } else if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please wait a moment and try again.')
+        } else if (response.status === 403) {
+          throw new Error('API key invalid or access denied.')
+        } else {
+          throw new Error(`API error: ${response.status}`)
+        }
       }
 
       const data = await response.json()
-      
-      // Extract the text from Gemini's response
+
       if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
         return data.candidates[0].content.parts[0].text
       } else {
@@ -106,7 +133,8 @@ If the question is unrelated to studying, gently redirect them to academic topic
       }
     } catch (error) {
       console.error('Gemini API Error:', error)
-      return "I'm sorry, I'm having trouble connecting to my knowledge base right now. Please try again in a moment. In the meantime, remember: consistent study habits and breaking tasks into smaller chunks are key to academic success!"
+      showNotification('error', error.message || 'Failed to get AI response')
+      throw error
     }
   }
 
@@ -126,18 +154,18 @@ If the question is unrelated to studying, gently redirect them to academic topic
     setIsLoading(true)
 
     try {
-      // Save user message to database
-      await supabase
-        .from('chat_messages')
-        .insert([{
-          user_id: user.id,
-          type: 'user',
-          content: messageToSend
-        }])
+      if (supabase) {
+        await supabase
+          .from('chat_messages')
+          .insert([{
+            user_id: user.id,
+            type: 'user',
+            content: messageToSend
+          }])
+      }
 
-      // Get AI response from Gemini
       const aiResponse = await callGeminiAPI(messageToSend)
-      
+
       const aiMessage = {
         id: Date.now() + 1,
         type: 'ai',
@@ -147,21 +175,22 @@ If the question is unrelated to studying, gently redirect them to academic topic
 
       setMessages(prev => [...prev, aiMessage])
 
-      // Save AI response to database
-      await supabase
-        .from('chat_messages')
-        .insert([{
-          user_id: user.id,
-          type: 'ai',
-          content: aiResponse
-        }])
+      if (supabase) {
+        await supabase
+          .from('chat_messages')
+          .insert([{
+            user_id: user.id,
+            type: 'ai',
+            content: aiResponse
+          }])
+      }
 
     } catch (error) {
       console.error('Error sending message:', error)
       const errorMessage = {
         id: Date.now() + 1,
-        type: 'ai',
-        content: "I'm sorry, I'm having trouble responding right now. Please try again later.",
+        type: 'error',
+        content: error.message || "I'm having trouble responding. Please check your API configuration and try again.",
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -172,51 +201,69 @@ If the question is unrelated to studying, gently redirect them to academic topic
 
   const deleteMessage = async (messageId) => {
     if (messageId === 'welcome') {
-      // Remove welcome message from state only
       setMessages(prev => prev.filter(msg => msg.id !== messageId))
       return
     }
 
-    if (!confirm('Delete this message?')) return
+    setConfirmModal({
+      title: 'Delete Message',
+      message: 'Are you sure you want to delete this message?',
+      onConfirm: async () => {
+        try {
+          if (supabase) {
+            const { error } = await supabase
+              .from('chat_messages')
+              .delete()
+              .eq('id', messageId)
 
-    try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('id', messageId)
+            if (error) throw error
+          }
 
-      if (error) throw error
-
-      setMessages(prev => prev.filter(msg => msg.id !== messageId))
-    } catch (error) {
-      console.error('Error deleting message:', error)
-      alert('Failed to delete message')
-    }
+          setMessages(prev => prev.filter(msg => msg.id !== messageId))
+          showNotification('success', 'Message deleted')
+        } catch (error) {
+          console.error('Error deleting message:', error)
+          showNotification('error', 'Failed to delete message')
+        } finally {
+          setConfirmModal(null)
+        }
+      },
+      onCancel: () => setConfirmModal(null)
+    })
   }
 
   const clearAllChat = async () => {
-    if (!confirm('Are you sure you want to delete all chat history? This cannot be undone.')) return
+    setConfirmModal({
+      title: 'Clear All Chat History',
+      message: 'Are you sure you want to delete all chat history? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          if (supabase) {
+            const { error } = await supabase
+              .from('chat_messages')
+              .delete()
+              .eq('user_id', user.id)
 
-    try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('user_id', user.id)
+            if (error) throw error
+          }
 
-      if (error) throw error
-
-      // Reset to welcome message
-      const welcomeMsg = {
-        id: 'welcome',
-        type: 'ai',
-        content: `Hello ${user?.user_metadata?.username || 'there'}! I'm your AI study assistant powered by Gemini. I can help you with study tips, time management, goal setting, and academic planning. What would you like to know?`,
-        timestamp: new Date().toISOString()
-      }
-      setMessages([welcomeMsg])
-    } catch (error) {
-      console.error('Error clearing chat:', error)
-      alert('Failed to clear chat history')
-    }
+          const welcomeMsg = {
+            id: 'welcome',
+            type: 'ai',
+            content: `Hello ${user?.user_metadata?.username || 'there'}! I'm your AI study assistant powered by Gemini. I can help you with study tips, time management, goal setting, and academic planning. What would you like to know?`,
+            timestamp: new Date().toISOString()
+          }
+          setMessages([welcomeMsg])
+          showNotification('success', 'Chat history cleared')
+        } catch (error) {
+          console.error('Error clearing chat:', error)
+          showNotification('error', 'Failed to clear chat history')
+        } finally {
+          setConfirmModal(null)
+        }
+      },
+      onCancel: () => setConfirmModal(null)
+    })
   }
 
   const handleKeyPress = (e) => {
@@ -235,6 +282,25 @@ If the question is unrelated to studying, gently redirect them to academic topic
 
   return (
     <div className="h-full flex flex-col">
+      {notification && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          isOpen={true}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={confirmModal.onCancel}
+          variant="danger"
+        />
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="flex items-center justify-between">
@@ -255,6 +321,15 @@ If the question is unrelated to studying, gently redirect them to academic topic
             <span>Clear All</span>
           </button>
         </div>
+        {!GEMINI_API_KEY && (
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start space-x-2">
+            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-yellow-800">
+              <p className="font-medium">API Key Not Configured</p>
+              <p className="mt-1">Add VITE_GEMINI_API_KEY to your .env file to enable AI features.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}
@@ -303,11 +378,19 @@ If the question is unrelated to studying, gently redirect them to academic topic
                 <div className={`rounded-lg p-4 ${
                   message.type === 'user'
                     ? 'bg-indigo-600 text-white'
+                    : message.type === 'error'
+                    ? 'bg-red-50 border border-red-200 text-red-800'
                     : 'bg-white border border-gray-200'
                 }`}>
+                  {message.type === 'error' && (
+                    <div className="flex items-center space-x-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <span className="font-medium text-sm">Error</span>
+                    </div>
+                  )}
                   <div className="whitespace-pre-wrap">{message.content}</div>
                   <div className={`text-xs mt-2 flex items-center justify-between ${
-                    message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'
+                    message.type === 'user' ? 'text-indigo-200' : message.type === 'error' ? 'text-red-600' : 'text-gray-500'
                   }`}>
                     <span>{format(new Date(message.timestamp), 'h:mm a')}</span>
                     <button
@@ -360,15 +443,23 @@ If the question is unrelated to studying, gently redirect them to academic topic
           />
           <button
             onClick={sendMessage}
-            disabled={!inputMessage.trim() || isLoading}
+            disabled={!inputMessage.trim() || isLoading || !GEMINI_API_KEY}
             className="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!GEMINI_API_KEY ? 'Configure API key to send messages' : 'Send message'}
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          💡 Tip: Press Enter to send, Shift+Enter for new line
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-gray-500">
+            Tip: Press Enter to send, Shift+Enter for new line
+          </p>
+          {!GEMINI_API_KEY && (
+            <p className="text-xs text-red-600">
+              API key required
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

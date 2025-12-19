@@ -102,7 +102,31 @@ Schedulr is a comprehensive study planner app designed to help students manage t
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
 ```
+
+### AI Assistant Setup (Google Gemini)
+
+The AI chatbot feature requires a Google Gemini API key. Follow these steps to set it up:
+
+1. **Get a Gemini API Key**:
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Sign in with your Google account
+   - Click "Create API Key"
+   - Copy the generated API key
+
+2. **Add to Environment**:
+   - Open your `.env` file
+   - Add the line: `VITE_GEMINI_API_KEY=your_api_key_here`
+   - Replace `your_api_key_here` with your actual API key
+   - Save the file and restart your development server
+
+3. **Verify Setup**:
+   - Navigate to the AI Assistant tab
+   - If configured correctly, you should see no warning message
+   - Try sending a message to test the chatbot
+
+**Note**: If you see a yellow warning banner saying "API Key Not Configured", it means the environment variable is missing or incorrect. The chatbot will not work until you add a valid API key.
 
 ## 🤝 Contributing
 
