@@ -1,6 +1,6 @@
-# Schedulr - Personalized Study Planner
+# Schedulr - Wholesome & Professional Study Ecosystem
 
-Schedulr is a comprehensive study planner app designed to help students manage their academic workload efficiently and achieve their target goals.
+Schedulr is a comprehensive, AI-enhanced study ecosystem designed with a **wholesome, professional pastel aesthetic**. It helps students manage their academic workload, track productivity with gamified rewards, and achieve their goals in a calm, focused environment.
 
 ## 🚀 Features
 
@@ -32,24 +32,38 @@ Schedulr is a comprehensive study planner app designed to help students manage t
 - Integration with tasks and exam deadlines
 - Personalized timetable generation
 
-### 🤖 AI Assistant
-- Integrated chatbot for study tips and guidance
-- Personalized recommendations based on progress
-- Quick action buttons for common queries
-- Chat history persistence
+### 🎮 Gamification Engine
+-   **Level Up Your Learning**: Earn XP by completing tasks, focus sessions, and using AI optimizations.
+-   **Student Progress**: Track your academic level and experience progress in the dashboard and sidebar.
+-   **Cozy Rewards**: Visual feedback for consistent study habits and streak maintenance.
 
-### 🎯 Dashboard Overview
-- Real-time statistics and progress tracking
-- Upcoming deadlines and recent activity
-- Quick action buttons for common tasks
+### ⏱️ Pomodoro Focus Timer
+-   **Focus Sessions**: Integrated Pomodoro timer with customizable focus and break durations.
+-   **Motivational Quotes**: Manual navigation for cycling through multiple inspirational prompts.
+-   **Focus Logging**: Earn rewards for deep work sessions and maintain your productivity momentum.
+
+### 📊 Github-Style Productivity Heatmap
+-   **Visualize Consistency**: Track your task completion history over the last 20 weeks with a GitHub-inspired activity heatmap.
+-   **Streak Tracking**: Monitor your study streak and habit consistency directly on the dashboard.
+
+### 🤖 AI Optimizer (Smart Scheduler)
+-   **AI Suggested Times**: Get AI-powered suggestions for the best times to work on your tasks.
+-   **Rate-Limit Resilience**: Advanced exponential backoff implementation for stable AI interactions (Google Gemini).
+-   **Adopt & Master**: Easily apply AI-suggested schedules to your calendar.
+
+### 🎯 Wholesome Dashboard
+-   **Real-time Statistics**: High-level overview of active planners, today's tasks, and exam deadlines.
+-   **Premium Visuals**: Sage Green and Dusty Pink cards with smooth animations and rounded shapes.
+-   **Cozy Log**: Recent activity and upcoming deadlines with a gentle, non-stressful UI.
 
 ## 🛠 Tech Stack
 
 - **Frontend**: React 19, Vite
-- **Styling**: Tailwind CSS
+- **Styling**: Vanilla CSS with Wholesome Design System (Sage/Pink/Sand)
 - **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Charts**: Recharts
+- **Authentication**: Supabase Auth (with Password Reset)
+- **AI Engine**: Google Gemini API
+- **Charts**: Recharts (Grade Bar Chart)
 - **Icons**: Lucide React
 - **Date Handling**: date-fns
 
