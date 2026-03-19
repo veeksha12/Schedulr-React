@@ -10,6 +10,10 @@ import EnhancedTodoList from './components/TodoList/EnhancedTodoList'
 import StudySchedule from './components/Schedule/StudySchedule'
 import GradeTracker from './components/Grades/GradeTracker'
 import AIAssistant from './components/Chat/AIAssistant'
+import ResetPasswordForm from './components/Auth/ResetPasswordForm'
+import Profile from './components/Auth/Profile'
+import FocusTimer from './components/Schedule/FocusTimer'
+import SmartScheduler from './components/Schedule/SmartScheduler'
 
 // Demo user for when Supabase is not connected
 const demoUser = {
@@ -33,6 +37,7 @@ const AuthWrapper = () => {
 const MainApp = () => {
   const { user, loading } = useAuth()
   const [activeTab, setActiveTab] = useState('dashboard')
+  const isResetPath = window.location.pathname === '/reset-password'
   
   // Use demo user if Supabase is not connected
   const currentUser = user || (!supabase ? demoUser : null)
@@ -43,6 +48,11 @@ const MainApp = () => {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     )
+  }
+
+  // Handle password reset route independently of auth state
+  if (isResetPath) {
+    return <ResetPasswordForm onBack={() => { window.location.href = '/' }} />
   }
 
   if (!currentUser) {
@@ -63,6 +73,12 @@ const MainApp = () => {
         return <GradeTracker />
       case 'chat':
         return <AIAssistant />
+      case 'profile':
+        return <Profile />
+      case 'focus':
+        return <FocusTimer />
+      case 'smart-scheduler':
+        return <SmartScheduler />
       default:
         return <Dashboard setActiveTab={setActiveTab} />
     }

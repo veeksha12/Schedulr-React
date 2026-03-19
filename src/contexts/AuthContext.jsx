@@ -14,6 +14,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isRecovering, setIsRecovering] = useState(false)
 
   useEffect(() => {
     if (!supabase) {
@@ -30,6 +31,9 @@ export const AuthProvider = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecovering(true)
+        }
         setUser(session?.user ?? null)
         setLoading(false)
       }
@@ -68,12 +72,49 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signOut = async () => {
-    if (!supabase) {
-      return { error: { message: 'Please connect to Supabase first' } }
-    }
-
     const { error } = await supabase.auth.signOut()
     return { error }
+  }
+
+  const resetPassword = async (email) => {
+    if (!supabase) return { error: { message: 'Missing Supabase client' } }
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    return { data, error }
+  }
+
+  const updatePassword = async (newPassword) => {
+    if (!supabase) return { error: { message: 'Missing Supabase client' } }
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
+    })
+    return { data, error }
+  }
+
+  const updateUserMetadata = async (updates) => {
+    if (!supabase || !user) return
+    
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        ...user.user_metadata,
+        ...updates
+      }
+    })
+    
+    if (!error && data.user) {
+      setUser(data.user)
+    }
+    return { data, error }
+  }
+
+  const addXP = async (amount) => {
+    if (!supabase || !user) return
+    
+    const currentXP = user.user_metadata?.xp || 0
+    const newXP = currentXP + amount
+    
+    return await updateUserMetadata({ xp: newXP })
   }
 
   const value = {
@@ -81,7 +122,12 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
-    loading
+    resetPassword,
+    updatePassword,
+    addXP,
+    updateUserMetadata,
+    loading,
+    isRecovering
   }
 
   return (
